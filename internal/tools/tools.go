@@ -19,6 +19,12 @@ type PayPaymentInput struct {
 	IdempotencyKey string `json:"idempotency_key,omitempty" jsonschema:"stable retry key for this payment request"`
 }
 
+type RefundPaymentInput struct {
+	PaymentID      string `json:"payment_id" jsonschema:"the local payment ID to refund"`
+	Amount         int64  `json:"amount" jsonschema:"refund amount in minor currency units"`
+	IdempotencyKey string `json:"idempotency_key,omitempty" jsonschema:"stable retry key for this refund request"`
+}
+
 func Register(server *mcp.Server, client *paymentapi.Client) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "get_payment",
@@ -36,6 +42,13 @@ func Register(server *mcp.Server, client *paymentapi.Client) {
 			captureMethod = "manual"
 		}
 		payment, err := client.PayPayment(ctx, input.IdempotencyKey, input.Amount, input.Currency, captureMethod, input.Reference)
+		return nil, payment, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "refund_payment",
+		Description: "Refund part or all of the captured amount for a payment. This is a high-risk mutation and requires explicit approval.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input RefundPaymentInput) (*mcp.CallToolResult, paymentapi.Payment, error) {
+		payment, err := client.RefundPayment(ctx, input.PaymentID, input.IdempotencyKey, input.Amount)
 		return nil, payment, err
 	})
 }

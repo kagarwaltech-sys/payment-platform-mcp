@@ -28,12 +28,14 @@ type Payment struct {
 	Currency           string `json:"currency"`
 	AuthorizedAmount   int64  `json:"authorized_amount"`
 	CapturedAmount     int64  `json:"captured_amount"`
+	RefundedAmount     int64  `json:"refunded_amount"`
 	Status             string `json:"status"`
 	CaptureMethod      string `json:"capture_method"`
 	Reference          string `json:"reference,omitempty"`
 	Processor          string `json:"processor,omitempty"`
 	ProcessorPaymentID string `json:"processor_payment_id,omitempty"`
 	ProcessorCaptureID string `json:"processor_capture_id,omitempty"`
+	ProcessorRefundID  string `json:"processor_refund_id,omitempty"`
 }
 
 func (c *Client) GetPayment(ctx context.Context, id string) (Payment, error) {
@@ -53,6 +55,20 @@ func (c *Client) PayPayment(ctx context.Context, idempotencyKey string, amount i
 	body := map[string]any{"amount": amount, "currency": currency, "capture_method": captureMethod, "reference": reference}
 	var result Payment
 	err := c.do(ctx, http.MethodPost, "/api/v1/payments/pay", idempotencyKey, body, &result)
+	return result, err
+}
+
+func (c *Client) RefundPayment(ctx context.Context, paymentID, idempotencyKey string, amount int64) (Payment, error) {
+	if idempotencyKey == "" {
+		var err error
+		idempotencyKey, err = newIdempotencyKey()
+		if err != nil {
+			return Payment{}, err
+		}
+	}
+	body := map[string]any{"amount": amount}
+	var result Payment
+	err := c.do(ctx, http.MethodPost, "/api/v1/payments/"+paymentID+"/refund", idempotencyKey, body, &result)
 	return result, err
 }
 
